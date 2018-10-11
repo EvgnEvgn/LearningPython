@@ -1,0 +1,2 @@
+a = 'sad'
+print(a)
