@@ -8,8 +8,8 @@ data_y = pd.read_csv("Y1.txt", sep=" ", header=None)
 data_x = np.array(data_x.iloc[:])
 data_y = np.array(data_y.iloc[:])
 
-x_train = data_x[:89]
-y_train = data_y[:89]
+x_train = data_x[:90]
+y_train = data_y[:90]
 
 x_test = data_x[90:]
 y_test = data_y[90:]
