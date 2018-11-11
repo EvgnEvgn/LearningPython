@@ -25,11 +25,12 @@ print("\nR coef =", skm.coef_)
 print("Intercept =", skm.intercept_)
 
 #----------------------------------------------------------------
-x_ = sm.add_constant(x_train)
-model = sm.OLS(y_train, x_)
+x_train_with_const = sm.add_constant(x_train)
+model = sm.OLS(y_train, x_train_with_const)
 results = model.fit()
-x_test = sm.add_constant(x_test)
-y_predicted = model.predict(x_test)
+x_test_with_const = sm.add_constant(x_test)
+y_predicted = results.predict(x_test_with_const)
+print(x_test)
 print("Predicted values:")
 print(y_predicted)
 
@@ -37,4 +38,14 @@ print('Model params by statsmodels')
 print(results.params)
 print(results.summary())
 
+x_matrix = np.matrix(x_train_with_const.values)
+y_matrix = np.matrix(y_train.values).transpose()
+x_transposed = x_matrix.transpose()
+x_mult_x_trans = np.dot(x_matrix, x_transposed)
+inversion_x = np.linalg.inv(x_mult_x_trans)
+
+print(len(x_transposed))
+x_trans_multiply_y = np.dot(x_transposed, y_matrix)
+
+result = np.dot(inversion_x, x_trans_multiply_y)
 
