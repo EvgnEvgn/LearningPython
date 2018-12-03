@@ -31,6 +31,7 @@ x2 = samples_2[:, 0]
 y2 = samples_2[:, 1]
 plot_samples([x1, y1], [x2, y2])
 
+print(x2)
 
 
 
