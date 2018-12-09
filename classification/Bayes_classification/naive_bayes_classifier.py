@@ -53,7 +53,6 @@ def gamma(x_object, array_of_x_objects, array_h, lambda_y, l_y, l):
 
     array_of_x_objects = get_columns(array_of_x_objects)
 
-    #probability_estimates = list(map(get_parzen_rozenblatt_probability_estimate, x_object, array_of_x_objects, array_h))
     probability_estimates = []
     index = 0
     for attribute in x_object:
