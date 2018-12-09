@@ -7,7 +7,7 @@ import statsmodels.formula.api as smf
 
 data = pd.read_excel("Folds5x2_pp.xlsx")
 data = data.drop(['V', ], axis=1)
-data = data.iloc[:50, :]
+data = data.iloc[:100, :]
 x = data.iloc[:, :-1]
 y = data.iloc[:, -1]
 
@@ -60,4 +60,8 @@ res = np.dot(inversion_x, x_transposed)
 result = np.dot(res, y_matrix)
 
 print(result)
+
+error = abs(y_predicted - y_test) / abs(y_test)
+print(error)
+
 

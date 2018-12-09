@@ -3,7 +3,7 @@ import time
 
 source = ['"C:\\Only for men"', 'C:\\My_docs']
 
-target_dir = 'G:\\Backup'
+target_dir = 'E:\\Backup'
 
 target = target_dir + os.sep + time.strftime('%Y%m%d%H%M%S') + '.zip'
 
