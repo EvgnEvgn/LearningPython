@@ -191,6 +191,7 @@ def leave_one_out(classes):
                 a.append(1)
             elif len(a_values_for_classes) > 1 and len(set(a_values_for_classes.values())) == 1:
                 a.append(1)
+
             else:
                 best_class = max(a_values_for_classes, key=a_values_for_classes.get)
                 a.append(0) if best_class == true_class_for_object else a.append(1)
