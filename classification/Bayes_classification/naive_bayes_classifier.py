@@ -6,8 +6,7 @@ import math
 import time
 from numpy import sin, cos, pi
 from scipy.optimize import leastsq
-import copy
-
+from sys import float_info
 
 def find_boundary(x, y, n, plot_pts=1000):
     def sines(theta):
@@ -72,7 +71,7 @@ def plot_samples(sample1, sample2, sample3=None, classes=None, boundary_points=N
             i += 1
 
     if len(boundary_points) > 0:
-        plt.scatter(boundary_points[:, 0], boundary_points[:, 1], c='black', s=10)
+        plt.plot(boundary_points[:, 0], boundary_points[:, 1], c='black', lw=2)
 
     plt.show()
 
@@ -143,7 +142,7 @@ def gamma(x_object, array_of_x_objects, h, lambda_y, l_y, l):
         probability_estimates.append(estimate)
 
     if any(x == 0.0 for x in probability_estimates):
-        return 0.0
+        return -float_info.max
     else:
         c = sum([math.log(pe) for pe in probability_estimates])
 
@@ -153,9 +152,9 @@ def gamma(x_object, array_of_x_objects, h, lambda_y, l_y, l):
 def leave_one_out(classes):
     start_time = time.process_time()
 
-    h = 0.1
-    h_step = 0.05
-    h_stop = 7
+    h = 0.8
+    h_step = 0.1
+    h_stop = 6
     lambda_y = 1
     all_objects = []
     a_values_for_classes = {}
@@ -185,18 +184,19 @@ def leave_one_out(classes):
                 g = gamma(obj, np.array(objects), h, lambda_y, l_y, length_of_all_objects)
                 a_values_for_classes.update({cls: g})
 
-            a_values_for_classes = {k: v for k, v in a_values_for_classes.items() if v != 0.0}
+            #a_values_for_classes = {k: v for k, v in a_values_for_classes.items() if v != 0.0}
 
-            if len(a_values_for_classes) == 0:
+            #if len(a_values_for_classes) == 0:
+            #    a.append(1)
+            if len(a_values_for_classes) > 1 and len(set(a_values_for_classes.values())) == 1:
                 a.append(1)
-            elif len(a_values_for_classes) > 1 and len(set(a_values_for_classes.values())) == 1:
-                a.append(1)
-
             else:
                 best_class = max(a_values_for_classes, key=a_values_for_classes.get)
                 a.append(0) if best_class == true_class_for_object else a.append(1)
 
         loo_result.update({h: np.sum(a)/length_of_all_objects})
+        class1_errors = np.sum(a[:100])
+        class2_errors = np.sum(a[100:])
         h += h_step
 
     end_time = time.process_time()
@@ -233,13 +233,15 @@ def classify(all_objects, classes):
             a_values.update(a)
             gammas.update({cl: abs(g)})
         # убираем нулевые значения
-        a_values = {k: v for k, v in a_values.items() if v != 0.0}
+        #a_values = {k: v for k, v in a_values.items() if v != 0.0}
 
-        if len(a_values) == 0:
+        #if len(a_values) == 0:
+        #    best_class = not_determined_class
+        if len(a_values) > 1 and len(set(a_values.values())) == 1:
             best_class = not_determined_class
         else:
             # допущение, что класса всего два (хардкод)
-            difference = abs(gammas.get("1") - gammas.get("2"))
+            difference = gammas.get("1") - gammas.get("2")
             if difference <= epsilon:
                 boundary_points.append(x)
             best_class = max(a_values, key=a_values.get)
@@ -256,7 +258,7 @@ def classify(all_objects, classes):
 # Исходные данные
 mu_1 = [3.0, 5.0]
 std_1 = np.matrix([[3.0, 0.0], [0.0, 3.0]], dtype=float)
-n = 100
+n = 50
 mu_2 = [10.0, 5.0]
 std_2 = np.matrix([[1.0, 0.0], [0.0, 1.0]], dtype=float)
 
@@ -278,7 +280,7 @@ all_points = get_points(-10, 20, -10, 20, 0.4)
 # classified_points, bound_points = classify(all_points, init_classes)
 #
 # class1 = np.array(classified_points["2"])
-# x_bound, y_bound = find_boundary(class1[:, 0], class1[:, 1], 2)
+# x_bound, y_bound = find_boundary(class1[:, 0], class1[:, 1], 1)
 #
 # boundary = np.column_stack((x_bound, y_bound))
 # #boundary = np.array(bound_points)
