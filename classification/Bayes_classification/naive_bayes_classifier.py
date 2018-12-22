@@ -152,7 +152,7 @@ def gamma(x_object, array_of_x_objects, h, lambda_y, l_y, l):
 def leave_one_out(classes):
     start_time = time.process_time()
 
-    h = 0.8
+    h = 0.9
     h_step = 0.1
     h_stop = 6
     lambda_y = 1
