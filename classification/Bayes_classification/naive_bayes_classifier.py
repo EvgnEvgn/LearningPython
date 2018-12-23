@@ -7,6 +7,9 @@ import time
 from numpy import sin, cos, pi
 from scipy.optimize import leastsq
 from sys import float_info
+from scipy.interpolate import spline
+from scipy.interpolate import interp1d
+
 
 def find_boundary(x, y, n, plot_pts=1000):
     def sines(theta):
@@ -54,25 +57,152 @@ def find_boundary(x, y, n, plot_pts=1000):
     return x_bound, y_bound
 
 
-def plot_samples(sample1, sample2, sample3=None, classes=None, boundary_points=None):
+def get_ordered_list(points, x, y):
+    #return sorted(points, key=lambda p: math.sqrt((p[0] - x) ** 2 + (p[1] - y) ** 2))
+    return sorted(points, key=lambda p: p[0] + p[1])
+    #return points
+
+
+def split_points(points):
+    mean = np.mean(points, axis=0)
+    left_points = []
+    right_points = []
+
+    for point in points:
+        if point[0] <= mean[0]:
+            left_points.append(point)
+        else:
+            right_points.append(point)
+
+    return np.array(left_points), np.array(right_points)
+
+
+def get_splited_boundary_points(boundary_pts):
+
+    left_, right_ = split_points(boundary_pts)
+
+    left_x = left_[:, 0]
+    left_y = left_[:, 1]
+
+    left_y_new = np.linspace(left_y.min(), left_y.max(), 1000)
+    f = interp1d(left_y, left_x, kind='linear')
+    left_x_new = f(left_y_new)
+
+    right_x = right_[:, 0]
+    right_y = right_[:, 1]
+    right_y_new = np.linspace(right_y.min(), right_y.max(), 1000)
+    f = interp1d(right_y, right_x, kind='linear')
+    right_x_new = f(right_y_new)
+
+    new_left = np.column_stack((left_x_new, left_y_new))
+    new_right = np.column_stack((right_x_new, right_y_new))
+
+    return new_left, new_right
+
+
+def get_mean_by_normal_distribution(X):
+    return np.mean(X, axis=0)
+
+
+def get_std_by_normal_distribution(X, mean):
+    a = np.subtract(X, mean)
+    b = np.power(a, 2)
+
+    c = np.mean(b, axis=0)
+
+    return c
+
+
+def std_inner(x, mean):
+    a = np.subtract(x, mean)
+    b = np.transpose(a)
+
+    return np.dot(b, a)
+
+
+def get_std_by_n_dim_normal_distribution(X, mean):
+    res = [[0, 0], [0, 0]]
+    m = len(X)
+
+    for i in range(0, m):
+        a = np.matrix(np.subtract(X[i], mean))
+        b = np.transpose(a)
+        c = np.dot(b, a)
+        res = np.add(c, res)
+
+    res = np.divide(res, m - 1)
+
+    return res
+
+
+def get_normal_density_distribution(x, mean, std):
+    a = np.multiply(std, math.sqrt(2 * math.pi))
+    b = np.power(np.subtract(x, mean), 2)
+    c = np.multiply(np.power(std, 2), 2)
+    d = np.divide(b, c)
+    e = np.multiply(d, -1)
+    f = np.exp(e)
+
+    return np.divide(f, a)
+
+
+def get_n_dim_normal_density_distribution(x, mean, std):
+    n_ = len(x)
+    det = np.linalg.det(std)
+    inv_std = np.matrix(np.linalg.inv(std))
+
+    a = math.sqrt(math.pow(2 * pi, n_) * det)
+    b = np.matrix(np.subtract(x, mean))
+    c = np.transpose(b)
+    d = np.dot(b, inv_std)
+    e = np.dot(d, c)
+    f = np.multiply(e, -0.5)
+    g = np.exp(f)
+
+    res = np.divide(g, a)
+
+    return res
+
+
+def plot_samples(sample1, sample2, sample3=None, classes=None, boundary_points=None, title=None, filename=None):
     plt.xlabel('Param X')
     plt.ylabel('Param Y')
-    plt.scatter(sample1[:, 0], sample1[:, 1], c='blue', marker="+", s=70)
-    plt.scatter(sample2[:, 0], sample2[:, 1], c='red', marker="+", s=70)
+    plt.scatter(sample1[:, 0], sample1[:, 1], c='#3f89ff', marker="+", s=50)
+    plt.scatter(sample2[:, 0], sample2[:, 1], c='#ff7c7c', marker="+", s=50)
 
-    if len(sample3) > 0:
-        plt.scatter(sample3[:, 0], sample3[:, 1], c='grey', marker="+", s=70)
+    if sample3 is not None and len(sample3) > 0:
+        plt.scatter(sample3[:, 0], sample3[:, 1], c='grey', marker="+", s=50)
 
-    if len(classes) > 0:
+    if classes is not None and len(classes) > 0:
         colors = ['red', 'blue', 'green', 'orange', 'yellow', 'black']
         i = 0
         for cl, points in classes.items():
+            points = np.array(points)
             plt.scatter(points[:, 0], points[:, 1], c=colors[i], marker="o", s=20)
             i += 1
 
-    if len(boundary_points) > 0:
-        plt.plot(boundary_points[:, 0], boundary_points[:, 1], c='black', lw=2)
+    if boundary_points is not None and len(boundary_points) > 0:
+        if isinstance(boundary_points, tuple):
+            plt.plot(boundary_points[0][:, 0], boundary_points[0][:, 1], c='black', lw=5)
+            plt.plot(boundary_points[1][:, 0], boundary_points[1][:, 1], c='black', lw=5)
+        else:
+            plt.plot(boundary_points[:, 0], boundary_points[:, 1], c='black', lw=2)
+    if title is not None:
+        plt.title(title)
+    if filename is not None:
+        plt.savefig(filename)
+    plt.show()
 
+
+def plot_training_set(x, y, title):
+    plt.xlabel('Param X')
+    plt.ylabel('Param Y')
+    plt.scatter(x[:, 0], x[:, 1], c='blue', marker="o", s=20)
+    plt.scatter(y[:, 0], y[:, 1], c='red', marker="o", s=20)
+
+    if title is not None:
+        plt.title(title)
+    plt.savefig('training_set.png')
     plt.show()
 
 
@@ -149,10 +279,37 @@ def gamma(x_object, array_of_x_objects, h, lambda_y, l_y, l):
     return b + c
 
 
+def gamma_for_normal_classifier(x, lambda_y, l_y, l, mu, std):
+    prior_probability = get_prior_probability(l_y, l)
+    b = math.log(lambda_y * prior_probability)
+
+    probability_estimates = get_normal_density_distribution(x, mu, std)
+
+    if any(x == 0.0 for x in probability_estimates):
+        return -float_info.max
+    else:
+        c = sum([math.log(pe) for pe in probability_estimates])
+
+    return b + c
+
+
+def gamma_for_plugin_classifier(x, lambda_y, l_y, l, mu, std):
+    prior_probability = get_prior_probability(l_y, l)
+    b = math.log(lambda_y * prior_probability)
+
+    probability_estimates = get_n_dim_normal_density_distribution(x, mu, std)
+
+    if any(x == 0.0 for x in probability_estimates):
+        return -float_info.max
+    else:
+        c = sum([math.log(pe) for pe in probability_estimates])
+
+    return b + c
+
+
 def leave_one_out(classes):
     start_time = time.process_time()
-
-    h = 0.9
+    h = 0.4
     h_step = 0.1
     h_stop = 6
     lambda_y = 1
@@ -184,19 +341,13 @@ def leave_one_out(classes):
                 g = gamma(obj, np.array(objects), h, lambda_y, l_y, length_of_all_objects)
                 a_values_for_classes.update({cls: g})
 
-            #a_values_for_classes = {k: v for k, v in a_values_for_classes.items() if v != 0.0}
-
-            #if len(a_values_for_classes) == 0:
-            #    a.append(1)
             if len(a_values_for_classes) > 1 and len(set(a_values_for_classes.values())) == 1:
                 a.append(1)
             else:
                 best_class = max(a_values_for_classes, key=a_values_for_classes.get)
                 a.append(0) if best_class == true_class_for_object else a.append(1)
 
-        loo_result.update({h: np.sum(a)/length_of_all_objects})
-        class1_errors = np.sum(a[:100])
-        class2_errors = np.sum(a[100:])
+        loo_result.update({h: np.sum(a) / length_of_all_objects})
         h += h_step
 
     end_time = time.process_time()
@@ -204,11 +355,11 @@ def leave_one_out(classes):
     return loo_result
 
 
-def classify(all_objects, classes):
+def classify(all_objects, classes, type=1, h_by_loo=None):
     start_time = time.process_time()
     lambda_y = 1
     length_of_all_objects = len(all_objects)
-    h_default = 1
+    h_default = h_by_loo
     result_classes = {"not_determined": []}
     a_values = {}
     h = {}
@@ -216,33 +367,46 @@ def classify(all_objects, classes):
     gammas = {}
     not_determined_class = "not_determined"
     # точность для разности гамм
-    epsilon = 1
+    epsilon = 0.2
+    mu = {}
+    std = {}
 
     for cls, objects in classes.items():
         result_classes.setdefault(cls, [])
         a_values.setdefault(cls, 0.0)
         h.setdefault(cls, h_default)
         gammas.setdefault(cls, 0.0)
+        if type != 1:
+            mu.update({cls: get_mean_by_normal_distribution(np.array(objects))})
+            print('mu{1} = {0}'.format(mu.get(cls), type))
+            if type == 2:
+                std_ = get_std_by_normal_distribution(objects, mu.get(cls))
+            else:
+                std_ = get_std_by_n_dim_normal_distribution(np.array(objects), mu.get(cls))
+            std.update({cls: std_})
+            print('std{1} = {0}'.format(std_, type))
 
     for x in all_objects:
 
         for cl, class_objects in classes.items():
             l_y = len(class_objects)
-            g = gamma(x, np.array(class_objects), h.get(cl), lambda_y, l_y, length_of_all_objects)
+            g = 0.0
+            if type == 1:
+                g = gamma(x, np.array(class_objects), h.get(cl), lambda_y, l_y, length_of_all_objects)
+            elif type == 2:
+                g = gamma_for_normal_classifier(x, lambda_y, l_y, length_of_all_objects, mu.get(cl), std.get(cl))
+            else:
+                g = gamma_for_plugin_classifier(x, lambda_y, l_y, length_of_all_objects, mu.get(cl), std.get(cl))
             a = {cl: g}
             a_values.update(a)
             gammas.update({cl: abs(g)})
-        # убираем нулевые значения
-        #a_values = {k: v for k, v in a_values.items() if v != 0.0}
 
-        #if len(a_values) == 0:
-        #    best_class = not_determined_class
         if len(a_values) > 1 and len(set(a_values.values())) == 1:
             best_class = not_determined_class
         else:
             # допущение, что класса всего два (хардкод)
             difference = gammas.get("1") - gammas.get("2")
-            if difference <= epsilon:
+            if abs(difference) <= epsilon:
                 boundary_points.append(x)
             best_class = max(a_values, key=a_values.get)
         objects_in_classes = result_classes.get(best_class)
@@ -257,10 +421,10 @@ def classify(all_objects, classes):
 
 # Исходные данные
 mu_1 = [3.0, 5.0]
-std_1 = np.matrix([[3.0, 0.0], [0.0, 3.0]], dtype=float)
-n = 50
-mu_2 = [10.0, 5.0]
-std_2 = np.matrix([[1.0, 0.0], [0.0, 1.0]], dtype=float)
+std_1 = np.matrix([[2.0, 0.0], [0.0, 5.0]], dtype=float)
+n = 300
+mu_2 = [8.0, 6.0]
+std_2 = np.matrix([[3.0, 0.0], [0.0, 3.0]], dtype=float)
 
 samples_1 = np.random.multivariate_normal(mu_1, std_1, n)
 samples_2 = np.random.multivariate_normal(mu_2, std_2, n)
@@ -271,23 +435,59 @@ x2_y1 = samples_1[:, 1]
 x1_y2 = samples_2[:, 0]
 x2_y2 = samples_2[:, 1]
 init_classes = {"1": samples_1.tolist(), "2": samples_2.tolist()}
-# plot_samples(samples_1, samples_2)
-
-# all_points = np.concatenate((samples_1, samples_2), axis=0)
-all_points = get_points(-10, 20, -10, 20, 0.4)
-# times = 10
-# # while times > 0:
-# classified_points, bound_points = classify(all_points, init_classes)
-#
-# class1 = np.array(classified_points["2"])
-# x_bound, y_bound = find_boundary(class1[:, 0], class1[:, 1], 1)
-#
-# boundary = np.column_stack((x_bound, y_bound))
-# #boundary = np.array(bound_points)
-#
-# not_determined = np.array(classified_points["not_determined"], dtype=float)
-# plot_samples(np.array(classified_points["2"]), np.array(classified_points["1"]), not_determined, init_classes, boundary)
+plot_training_set(samples_1, samples_2, title="Обучающая выборка")
 
 loo = leave_one_out(init_classes)
-plt.plot(loo.keys(), loo.values(), lw=2, c='black')
+loo_x = np.array(list(loo.keys()))
+loo_y = np.array(list(loo.values()))
+xnew = np.linspace(loo_x.min(), loo_x.max(), 300)
+y_smooth = spline(loo_x, loo_y, xnew)
+plt.plot(xnew, y_smooth, lw=2, c='black')
+plt.ylabel("LOO")
+plt.xlabel("h")
+plt.savefig('loo.png')
 plt.show()
+
+all_points = get_points(-50, 50, -50, 50, 0.4)
+
+h = min(loo, key=loo.get)
+print(h)
+classified_points, bounds = classify(all_points, init_classes, 1, h)
+
+class1 = np.array(classified_points["2"])
+x_bound, y_bound = find_boundary(class1[:, 0], class1[:, 1], 3)
+
+boundary = np.column_stack((x_bound, y_bound))
+
+not_determined = np.array(classified_points["not_determined"], dtype=float)
+plot_samples(np.array(classified_points["2"]), np.array(classified_points["1"]),
+             not_determined, init_classes, boundary_points=boundary, filename='result_of_naive_classification.png',
+             title="\"Наивный\" байесовский классификатор")
+
+classified_points, bounds = classify(all_points, init_classes, 2)
+
+class1 = np.array(classified_points["1"])
+x_bound, y_bound = find_boundary(class1[:, 0], class1[:, 1], 3)
+
+boundary = np.column_stack((x_bound, y_bound))
+bounds = np.array(bounds)
+
+left, right = get_splited_boundary_points(bounds)
+
+not_determined = np.array(classified_points["not_determined"], dtype=float)
+class2 = classified_points["2"]
+class1 = classified_points["1"]
+
+
+plot_samples(np.array(class2), np.array(class1),
+             not_determined, init_classes, boundary_points=(left, right), filename='result_of_normal_naive_classification.png',
+             title="\"Наивный\" нормальный байесовский классификатор")
+
+classified_points, bounds = classify(all_points, init_classes, 3)
+
+left, right = get_splited_boundary_points(bounds)
+
+not_determined = np.array(classified_points["not_determined"], dtype=float)
+plot_samples(np.array(classified_points["2"]), np.array(classified_points["1"]),
+             not_determined, init_classes, boundary_points=(left, right), filename='result_of_plugin_classification.png',
+             title="Подстановочный классификатор (plug-in)")
